@@ -1,0 +1,4 @@
+dataset_id,f4dficimg_subdir,num_classes,f4dficimg_dir
+14,dif_nih14,14,~/ml4img/f4dficimg/dif_nih14
+15,dif_orid5k_balanced,8,~/ml4img/f4dficimg/dif_orid5k_balanced
+16,dif_MRItumor,4,~/ml4img/f4dficimg/dif_MRItumor

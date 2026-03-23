@@ -1,0 +1,72 @@
+{
+  "time": "2026-03-23T18:24:58",
+  "passed": 12,
+  "total": 13,
+  "results": [
+    {
+      "name": "核心映射表完整性",
+      "passed": true,
+      "details": "core_mappings 三表存在、可读、非空、无 NaN，且 dataset_id 映射符合要求"
+    },
+    {
+      "name": "目录结构与文档",
+      "passed": true,
+      "details": "根目录与 dataset14/15/16 结构齐全，核心文件均非空"
+    },
+    {
+      "name": "dataset14 CSV/Parquet 内容",
+      "passed": true,
+      "details": "pll_dataset.csv 字段齐全，Parquet 维度/取值/label_id 范围均正确"
+    },
+    {
+      "name": "dataset14 溯源映射",
+      "passed": true,
+      "details": "id_mapping 字段齐全，且 f4dficimg_path 100% 存在"
+    },
+    {
+      "name": "dataset14 Mat 兼容性",
+      "passed": true,
+      "details": "Mat 字段齐全、维度合理，且不含 train/test 划分字段"
+    },
+    {
+      "name": "dataset15 CSV/Parquet 内容",
+      "passed": true,
+      "details": "pll_dataset.csv 字段齐全，Parquet 维度/取值/label_id 范围均正确"
+    },
+    {
+      "name": "dataset15 溯源映射",
+      "passed": true,
+      "details": "id_mapping 字段齐全，且 f4dficimg_path 100% 存在"
+    },
+    {
+      "name": "dataset15 Mat 兼容性",
+      "passed": true,
+      "details": "Mat 字段齐全、维度合理，且不含 train/test 划分字段"
+    },
+    {
+      "name": "dataset16 CSV/Parquet 内容",
+      "passed": true,
+      "details": "pll_dataset.csv 字段齐全，Parquet 维度/取值/label_id 范围均正确"
+    },
+    {
+      "name": "dataset16 溯源映射",
+      "passed": true,
+      "details": "id_mapping 字段齐全，且 f4dficimg_path 100% 存在"
+    },
+    {
+      "name": "dataset16 Mat 兼容性",
+      "passed": true,
+      "details": "Mat 字段齐全、维度合理，且不含 train/test 划分字段"
+    },
+    {
+      "name": "CSV 编码/格式",
+      "passed": false,
+      "details": "编码未显示为 utf-8: /home/droot/pll_dts/imprecise-label-learning-datasets/dataset14/csv_data/pll_dataset.csv: text/csv; charset=us-ascii"
+    },
+    {
+      "name": "可追溯性文档",
+      "passed": true,
+      "details": "README 与 data_stats.md 包含核心来源/方法/不划分说明"
+    }
+  ]
+}
