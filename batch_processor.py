@@ -10,6 +10,9 @@
   python batch_processor.py --export
   python batch_processor.py --validate-only
 
+仅更新指定数据集（不会触碰其它数据集产物；会对 core_mappings 做同 dataset_id 的局部更新）：
+    python batch_processor.py --export --only-datasets 14 --xlsx14 /path/to/ds14.xlsx
+
 默认读取 res_src 中 20260319 的 3 份 XLSX；如需替换可通过参数覆盖。
 """
 
@@ -206,6 +209,140 @@ def build_core_mappings(specs: Sequence[DatasetSpec]) -> Tuple[pd.DataFrame, pd.
 def make_label_order(labels_df: pd.DataFrame) -> List[int]:
     ids = sorted({int(x) for x in labels_df["label_id"].tolist()})
     return ids
+
+
+def parse_only_datasets(raw: str) -> Optional[Set[int]]:
+    s = (raw or "").strip()
+    if not s:
+        return None
+    out: Set[int] = set()
+    for part in s.split(","):
+        p = part.strip()
+        if not p:
+            continue
+        out.add(int(p))
+    return out or None
+
+
+def _ensure_dir(p: Path) -> None:
+    p.mkdir(parents=True, exist_ok=True)
+
+
+def build_core_mappings_for_spec(spec: DatasetSpec) -> Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
+    """仅基于单个 spec 的 XLSX 生成其对应的三张映射表片段。
+
+    注意：此处会做本地 f4dficimg_path 存在性校验（维护者/溯源用途）。
+    """
+    ann, images, labels, _info = read_xlsx(spec)
+
+    dataset_mapping = pd.DataFrame(
+        [
+            {
+                "dataset_id": spec.dataset_id,
+                "f4dficimg_subdir": spec.f4dficimg_subdir,
+                "num_classes": int(spec.expected_num_classes),
+                "f4dficimg_dir": f"~/ml4img/f4dficimg/{spec.f4dficimg_subdir}",
+            }
+        ]
+    )
+
+    # image_id_mapping：以 images 表为基准（全量图片），补全 uuid/orig/f4dficimg 溯源路径
+    images = images.copy()
+    images["image_id"] = images["image_id"].astype(int)
+    images["image_path"] = images["image_path"].astype(str)
+
+    img_rows: List[dict] = []
+    for _, r in images.iterrows():
+        image_id = int(r["image_id"])
+        xlsx_image_path = str(r["image_path"])
+        uuid_prefix, orig_fname = split_uuid_and_filename(xlsx_image_path)
+        logical, physical = expand_f4dficimg_path(spec.f4dficimg_subdir, orig_fname)
+        if not physical.exists():
+            raise FileNotFoundError(
+                f"溯源失败：dataset_id={spec.dataset_id} image_id={image_id} 原文件名={orig_fname} 期望路径={physical}"
+            )
+        img_rows.append(
+            {
+                "dataset_id": spec.dataset_id,
+                "image_id": image_id,
+                "xlsx_image_path": xlsx_image_path,
+                "uuid_prefix": uuid_prefix,
+                "original_filename": orig_fname,
+                "f4dficimg_path": logical,
+            }
+        )
+    image_id_mapping = pd.DataFrame(img_rows).sort_values(["dataset_id", "image_id"]).reset_index(drop=True)
+
+    # label_dict：来自 labels 表
+    label_rows: List[dict] = []
+    for _, r in labels.iterrows():
+        label_rows.append(
+            {
+                "dataset_id": spec.dataset_id,
+                "label_id": int(r["label_id"]),
+                "label_name": str(r.get("label_name", "")),
+                "category": str(r.get("category", "")),
+                "description": "",
+            }
+        )
+    label_dict = pd.DataFrame(label_rows).sort_values(["dataset_id", "label_id"]).reset_index(drop=True)
+
+    # 完整性：禁止缺失
+    for name, df in [
+        ("dataset_mapping", dataset_mapping),
+        ("image_id_mapping", image_id_mapping),
+        ("label_dict", label_dict),
+    ]:
+        if df.isna().any().any():
+            bad = df.isna().sum().to_dict()
+            raise ValueError(f"{name} 存在缺失值: {bad}")
+
+    # dataset_id 一致性检查：labels 的类别数要匹配预期
+    q = len(make_label_order(labels))
+    if q != spec.expected_num_classes:
+        raise ValueError(f"dataset_id={spec.dataset_id} 类别数不匹配：labels表={q} 期望={spec.expected_num_classes}")
+
+    return dataset_mapping, image_id_mapping, label_dict
+
+
+def update_core_mappings_partial(repo_root: Path, specs_to_update: Sequence[DatasetSpec], all_specs: Sequence[DatasetSpec]) -> None:
+    """只更新 core_mappings 中指定 dataset_id 的行。
+
+    - 若 core_mappings 不存在：退化为全量重建（all_specs）
+    - 若存在：对每个 spec 读取其 XLSX，生成片段并替换对应 dataset_id
+    """
+    core = repo_root / "core_mappings"
+    _ensure_dir(core)
+
+    dm_path = core / "dataset_mapping.csv"
+    im_path = core / "image_id_mapping.csv"
+    ld_path = core / "label_dict.csv"
+
+    if not (dm_path.exists() and im_path.exists() and ld_path.exists()):
+        dataset_mapping, image_id_mapping, label_dict = build_core_mappings(list(all_specs))
+        dm_path.write_text(dataset_mapping.to_csv(index=False), encoding="utf-8")
+        im_path.write_text(image_id_mapping.to_csv(index=False), encoding="utf-8")
+        ld_path.write_text(label_dict.to_csv(index=False), encoding="utf-8")
+        return
+
+    # load existing
+    dataset_mapping = pd.read_csv(dm_path, keep_default_na=False)
+    image_id_mapping = pd.read_csv(im_path, keep_default_na=False)
+    label_dict = pd.read_csv(ld_path, keep_default_na=False)
+
+    for spec in specs_to_update:
+        dm_new, im_new, ld_new = build_core_mappings_for_spec(spec)
+        dataset_mapping = pd.concat([dataset_mapping[dataset_mapping["dataset_id"] != spec.dataset_id], dm_new], ignore_index=True)
+        image_id_mapping = pd.concat([image_id_mapping[image_id_mapping["dataset_id"] != spec.dataset_id], im_new], ignore_index=True)
+        label_dict = pd.concat([label_dict[label_dict["dataset_id"] != spec.dataset_id], ld_new], ignore_index=True)
+
+    dataset_mapping = dataset_mapping.sort_values(["dataset_id"]).reset_index(drop=True)
+    image_id_mapping = image_id_mapping.sort_values(["dataset_id", "image_id"]).reset_index(drop=True)
+    label_dict = label_dict.sort_values(["dataset_id", "label_id"]).reset_index(drop=True)
+
+    dm_path.write_text(dataset_mapping.to_csv(index=False), encoding="utf-8")
+    im_path.write_text(image_id_mapping.to_csv(index=False), encoding="utf-8")
+    ld_path.write_text(label_dict.to_csv(index=False), encoding="utf-8")
 
 
 def export_one_dataset(spec: DatasetSpec) -> None:
@@ -476,8 +613,13 @@ def write_dataset_stats(
     (spec.out_dir / "data_stats.md").write_text(out, encoding="utf-8")
 
 
-def validate_outputs(repo_root: Path) -> None:
-    """批量校验：映射表无缺失、三套数据集文件可加载。"""
+def validate_outputs(repo_root: Path, only_datasets: Optional[Set[int]] = None) -> None:
+    """批量校验：映射表无缺失、数据集文件可加载。
+
+    only_datasets:
+      - None：校验 dataset14/15/16 全部
+      - {14}：仅校验 dataset14（以及 core_mappings）
+    """
     # core mappings
     core = repo_root / "core_mappings"
     for f in ["dataset_mapping.csv", "image_id_mapping.csv", "label_dict.csv"]:
@@ -498,7 +640,11 @@ def validate_outputs(repo_root: Path) -> None:
         ds_to_label_ids[int(ds_id)] = set(int(x) for x in grp["label_id"].tolist())
 
     # per dataset
-    for d in ["dataset14", "dataset15", "dataset16"]:
+    ds_dirs = [(14, "dataset14"), (15, "dataset15"), (16, "dataset16")]
+    if only_datasets is not None:
+        ds_dirs = [(ds_id, dname) for ds_id, dname in ds_dirs if ds_id in only_datasets]
+
+    for _ds_id, d in ds_dirs:
         base = repo_root / d
         for p in [
             base / "csv_data" / "pll_dataset.csv",
@@ -595,12 +741,19 @@ def main() -> None:
     ap.add_argument("--xlsx14", default="")
     ap.add_argument("--xlsx15", default="")
     ap.add_argument("--xlsx16", default="")
+    ap.add_argument(
+        "--only-datasets",
+        default="",
+        help="仅处理指定 dataset_id，逗号分隔，例如 '14' 或 '14,16'。不指定则处理 14/15/16 全部。",
+    )
     ap.add_argument("--export", action="store_true")
     ap.add_argument("--validate-only", action="store_true")
     args = ap.parse_args()
 
     repo_root = Path(args.repo_root).resolve()
     specs = default_specs(repo_root)
+
+    only_datasets = parse_only_datasets(args.only_datasets)
 
     # 覆盖 XLSX 路径
     overrides = {14: args.xlsx14, 15: args.xlsx15, 16: args.xlsx16}
@@ -614,25 +767,32 @@ def main() -> None:
     specs = updated
 
     if args.validate_only and not args.export:
-        validate_outputs(repo_root)
+        validate_outputs(repo_root, only_datasets=only_datasets)
         print("OK: validate-only")
         return
 
     if not args.export:
         raise SystemExit("请指定 --export 或 --validate-only")
 
-    # Step1 core_mappings
-    dataset_mapping, image_id_mapping, label_dict = build_core_mappings(specs)
-    (repo_root / "core_mappings" / "dataset_mapping.csv").write_text(dataset_mapping.to_csv(index=False), encoding="utf-8")
-    (repo_root / "core_mappings" / "image_id_mapping.csv").write_text(image_id_mapping.to_csv(index=False), encoding="utf-8")
-    (repo_root / "core_mappings" / "label_dict.csv").write_text(label_dict.to_csv(index=False), encoding="utf-8")
+    # Step1 core_mappings（支持局部更新）
+    if only_datasets is None:
+        dataset_mapping, image_id_mapping, label_dict = build_core_mappings(specs)
+        (repo_root / "core_mappings" / "dataset_mapping.csv").write_text(dataset_mapping.to_csv(index=False), encoding="utf-8")
+        (repo_root / "core_mappings" / "image_id_mapping.csv").write_text(image_id_mapping.to_csv(index=False), encoding="utf-8")
+        (repo_root / "core_mappings" / "label_dict.csv").write_text(label_dict.to_csv(index=False), encoding="utf-8")
+        specs_to_export = specs
+    else:
+        specs_to_export = [s for s in specs if s.dataset_id in only_datasets]
+        if not specs_to_export:
+            raise SystemExit(f"--only-datasets={args.only_datasets} 未匹配到任何数据集（仅支持 14/15/16）")
+        update_core_mappings_partial(repo_root, specs_to_export, all_specs=specs)
 
     # Step2 export datasets (CSV/Parquet/Mat/Stats)
-    for spec in specs:
+    for spec in specs_to_export:
         export_one_dataset(spec)
 
     # Step6 validate
-    validate_outputs(repo_root)
+    validate_outputs(repo_root, only_datasets=only_datasets)
     print("OK: export + validate")
 
 

@@ -8,5 +8,6 @@ venv/
 .env
 .DS_Store
 
-# optional local outputs
+# optional local outputs,logs
 *.log
+audit_logs/
