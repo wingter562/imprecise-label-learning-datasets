@@ -251,24 +251,55 @@ def check_encoding() -> CheckResult:
 
 
 def check_traceability_docs() -> CheckResult:
-    # data_stats.md 需包含来源与方法引用（简易关键字检测）
+    # data_stats.md 需包含核心统计段（简易关键字检测；允许中英任一）
     missing = []
     for ds in [14, 15, 16]:
         txt = (REPO_ROOT / f"dataset{ds}" / "data_stats.md").read_text(encoding="utf-8")
-        if "样本数" not in txt or "标签分布" not in txt:
-            missing.append(f"dataset{ds}: 缺少核心统计段")
+        has_samples = ("样本数" in txt) or ("sample" in txt.lower()) or ("#images" in txt.lower())
+        has_label_dist = ("标签分布" in txt) or ("label distribution" in txt.lower())
+        if not (has_samples and has_label_dist):
+            missing.append(f"dataset{ds}: 缺少核心统计段（样本数/标签分布）")
     if missing:
         return CheckResult("可追溯性文档", False, "; ".join(missing))
 
     readme = (REPO_ROOT / "README.md").read_text(encoding="utf-8")
-    need_keys = ["去掉", "UUID", "static/img", "ml4img", "aggregate_difficult_multilabel.py", "extract_difficult_images.py"]
-    miss_keys = [k for k in need_keys if k not in readme]
-    if miss_keys:
-        return CheckResult("可追溯性文档", False, f"README.md 缺少关键说明: {miss_keys}")
+    readme_l = readme.lower()
 
-    # train/test 表述允许“未提供”或“不提供”
-    if ("未提供 train/test" not in readme) and ("不提供 train/test" not in readme):
-        return CheckResult("可追溯性文档", False, "README.md 缺少 train/test 不划分说明（需包含：未提供 train/test 或 不提供 train/test）")
+    # README 需覆盖：UUID 前缀剥离规则 + static/img 模式 + 上游链路脚本引用
+    missing_readme = []
+
+    if "uuid" not in readme_l:
+        missing_readme.append("UUID")
+    if "static/img" not in readme_l:
+        missing_readme.append("static/img")
+    if ("strip" not in readme_l) and ("remove" not in readme_l) and ("去掉" not in readme):
+        missing_readme.append("strip/remove UUID prefix")
+    if "ml4img" not in readme_l:
+        missing_readme.append("ml4img")
+    if "medc-img-annotation-app" not in readme_l:
+        missing_readme.append("medc-img-annotation-app")
+    if "aggregate_difficult_multilabel.py" not in readme_l:
+        missing_readme.append("aggregate_difficult_multilabel.py")
+    if "extract_difficult_images.py" not in readme_l:
+        missing_readme.append("extract_difficult_images.py")
+
+    if missing_readme:
+        return CheckResult("可追溯性文档", False, f"README.md 缺少关键说明: {missing_readme}")
+
+    # train/test 说明：允许中/英表述
+    ok_split_phrases = [
+        "未提供 train/test",
+        "不提供 train/test",
+        "no train/val/test split",
+        "no train/test split",
+        "no split is provided",
+    ]
+    if not any(p.lower() in readme_l for p in ok_split_phrases):
+        return CheckResult(
+            "可追溯性文档",
+            False,
+            "README.md 缺少不划分 train/val/test 的说明（需包含类似：No train/val/test split is provided / 未提供 train/test）",
+        )
 
     return CheckResult("可追溯性文档", True, "README 与 data_stats.md 包含核心来源/方法/不划分说明")
 

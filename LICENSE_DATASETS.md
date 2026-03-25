@@ -1,19 +1,24 @@
-# 数据集许可说明（图片/原始数据）
+# Dataset license notes (images / upstream data)
 
-本仓库仅分发：
-- 标注结果（CSV/Parquet/Mat 等结构化表）
-- 溯源映射表与统计报告
-- 数据加载/可视化脚本
+This repository distributes **labels and tables only**:
+- annotation results (CSV/Parquet/Mat)
+- traceability mappings and stats reports
+- data loading / visualization scripts
 
-**不包含任何图片文件**。图片将由 Kaggle 托管；其许可与使用限制以原始公开数据集与平台条款为准。
+It **does not include any image files**. Images are hosted on Kaggle; their licenses and usage restrictions must follow the original upstream datasets and platform terms.
 
-## 分数据集许可（约定）
-以下为本项目整理与发布时的许可对齐约定（用于 README 与 Kaggle 数据集页面说明）：
+## Per-dataset license alignment (project convention)
+The following is the current license alignment convention used for our README / Kaggle dataset pages:
 
-- dataset14（dif_nih14）：CC0
-- dataset16（dif_MRItumor）：MIT
-- dataset15（dif_orid5k_balanced）：非商用学术许可（Non-commercial academic use）
+- dataset14 (dif_nih14): CC0
+- dataset16 (dif_MRItumor): MIT
+- dataset15 (dif_orid5k_balanced): Non-commercial academic use
 
-> 说明：由于上游数据集可能在不同平台/时间存在条款更新，本文件不替代原始许可证文本。
-> 在正式发布到 Kaggle 前，建议在 `data_links.md` 中补充：
-> 1) 上游数据集链接；2) 对应许可证链接/原文；3) 你最终选择的引用与使用限制表述。
+Disclaimer: upstream licenses/terms can change across platforms and time. This document does not replace the original license texts.
+Before final Kaggle release, it is recommended to add to `data_links.md`:
+1) upstream dataset links; 2) license links/text; 3) your final citation and restriction statement.
+
+---
+
+## 中文备注
+本仓库不含图片，仅分发标签与表文件；图片许可请以原始公开数据集与平台条款为准。
