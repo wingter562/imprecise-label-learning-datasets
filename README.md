@@ -3,16 +3,18 @@
 This repository publishes **standardized label tables** (CSV/Parquet/Mat) in the *SEU PLL dataset format* for three “difficult-sample” medical image subsets.
 
 Important:
-- **No images are included in this repository.** Images are hosted on Kaggle.
+- **No dataset images are included in this repository.** Full image sets are hosted on Kaggle (this repo only includes a few small example images for illustration in the README).
 - **No train/val/test split is provided.** All exports keep the full dataset; users can split as needed.
 
 ## Datasets at a glance
 
-| Dataset | Kaggle images | #Images (M) | #Classes (Q) |
-|---|---|---:|---:|
-| dataset14 (dif-nih14) | https://www.kaggle.com/datasets/yufaja/dif-nih14 | 11212 | 14 |
-| dataset15 (dif-orid5k-balanced) | https://www.kaggle.com/datasets/yufaja/dif-orid5k-balanced | 2765 | 8 |
-| dataset16 (dif-mritumor) | https://www.kaggle.com/datasets/yufaja/dif-mritumor | 1431 | 4 |
+| Dataset | Kaggle images | #Images (labeled in tables) | #Images (total on Kaggle) | #Classes (Q) |
+|---|---|---:|---:|---:|
+| dataset14 (dif-nih14) | https://www.kaggle.com/datasets/yufaja/dif-nih14 | 4683 | 11212 | 14 |
+| dataset15 (dif-orid5k-balanced) | https://www.kaggle.com/datasets/yufaja/dif-orid5k-balanced | 2765 | 2765 | 8 |
+| dataset16 (dif-mritumor) | https://www.kaggle.com/datasets/yufaja/dif-mritumor | 1431 | 1431 | 4 |
+
+Note: dataset14 is **partially annotated** at the moment; the exported tables include labeled images only.
 
 ## Quickstart (for users)
 You do **NOT** need `~/ml4img/f4dficimg/...` to use these datasets.
@@ -38,9 +40,7 @@ print(pll[["image_id", "full_path", "partial_target", "target"]].head())
 See `dataset*/code/data_loader.py` for full loaders.
 
 ## Example: real multi-expert disagreement (from XLSX snapshots)
-Markdown supports images via `![](path-or-url)`. This repo does not ship images, but you can:
-- open the file by its `image_path` in the extracted Kaggle folder, or
-- embed a local screenshot in a Markdown file.
+Markdown supports images via `![](path-or-url)`. This repo does not ship full dataset image sets (they are on Kaggle), but it includes a few small example images below for illustration.
 
 Below are **real** cases where multiple experts disagreed. Expert IDs are anonymized.
 
@@ -48,15 +48,15 @@ Example images (copied from maintainer local trace folders for illustration):
 
 ### dataset14 (dif-nih14)
 
-![dataset14 example: 00000061_022.png](assets/examples/dataset14_00000061_022.png)
-- `image_name`: `00000061_022.png` 
+![dataset14 example: 00000416_004.png](assets/examples/dataset14_00000416_004.png)
+- `image_name`: `00000416_004.png`
 
 - Experts (anonymized):
-  - Expert A → `积液` (Pleural effusion)
-  - Expert B → `肺炎` (Pneumonia)
+  - Expert A → candidates `[90, 91]` (`心脏扩大` / `结节肿块`)
+  - Expert B → `[89]` (`胸膜增厚`)
 - Exported fields:
-  - `target`: `肺炎` (label_id=88)
-  - `partial_target`: {`积液` (87), `肺炎` (88)}
+  - `target`: `胸膜增厚` (label_id=89)
+  - `partial_target`: {`胸膜增厚` (89), `心脏扩大` (90), `结节肿块` (91)}
 
 ### dataset15 (dif-orid5k-balanced)
 
