@@ -1,14 +1,14 @@
-# Imprecise-Label Learning Datasets (SEU PLL Format)
+# Imprecise-Label Learning Datasets (ILL) of medical imaging
 
-This repository publishes **standardized label tables** (CSV/Parquet/Mat) in the *SEU PLL dataset format* for three “difficult-sample” medical image subsets.
+This repository publishes **multi-expert annotations** as standardized label tables (CSV/Parquet/Mat) in the *SEU PLL dataset format* for "difficult" samples in three public medical image datasets. The disagreements on many samples present unique challenges to medical image classification tasks.
 
 Important:
 - **No dataset images are included in this repository.** Full image sets are hosted on Kaggle (this repo only includes a few small example images for illustration in the README).
 - **No train/val/test split is provided.** All exports keep the full dataset; users can split as needed.
 
-## Datasets at a glance
+## Raw images
 
-| Dataset | Kaggle images | #Images (labeled in tables) | #Images (total on Kaggle) | #Classes (Q) |
+| Dataset | Kaggle source | #Images labeled | #Images in total | #Classes (Q) |
 |---|---|---:|---:|---:|
 | dataset14 (dif-nih14) | https://www.kaggle.com/datasets/yufaja/dif-nih14 | 4683 | 11212 | 14 |
 | dataset15 (dif-orid5k-balanced) | https://www.kaggle.com/datasets/yufaja/dif-orid5k-balanced | 2765 | 2765 | 8 |
@@ -40,7 +40,7 @@ print(pll[["image_id", "full_path", "partial_target", "target"]].head())
 See `dataset*/code/data_loader.py` for full loaders.
 
 ## Example: real multi-expert disagreement (from XLSX snapshots)
-Markdown supports images via `![](path-or-url)`. This repo does not ship full dataset image sets (they are on Kaggle), but it includes a few small example images below for illustration.
+This repo does not ship full dataset image sets (they are on Kaggle), but it includes a few small example images below for illustration.
 
 Below are **real** cases where multiple experts disagreed. Expert IDs are anonymized.
 
@@ -48,15 +48,15 @@ Example images (copied from maintainer local trace folders for illustration):
 
 ### dataset14 (dif-nih14)
 
-![dataset14 example: 00000416_004.png](assets/examples/dataset14_00000416_004.png)
+<img src="assets/examples/dataset14_00000416_004.png" alt="drawing" width="500"/>
 - `image_name`: `00000416_004.png`
 
 - Experts (anonymized):
-  - Expert A → candidates `[90, 91]` (`心脏扩大` / `结节肿块`)
-  - Expert B → `[89]` (`胸膜增厚`)
+  - Expert A → candidates `[90, 91]` (`Cardiomegaly` / `Nodular Mass`)
+  - Expert B → `[89]` (`Pleural thickening`)
 - Exported fields:
-  - `target`: `胸膜增厚` (label_id=89)
-  - `partial_target`: {`胸膜增厚` (89), `心脏扩大` (90), `结节肿块` (91)}
+  - `target`: `Pleural thickening` (label_id=89)
+  - `partial_target`: {`Pleural thickening` (89), `Cardiomegaly` (90), `Nodular Mass` (91)}
 
 ### dataset15 (dif-orid5k-balanced)
 
@@ -64,12 +64,12 @@ Example images (copied from maintainer local trace folders for illustration):
 - `image_name`: `7_left.jpg`
 
 - Experts (anonymized):
-  - Expert A → `其他疾病/异常` (Other abnormality)
-  - Expert B → `正常` (Normal)
-  - Expert C → `年龄相关性黄斑变性` (AMD)
+  - Expert A → `Other Disease/Abnormality` (其他疾病/异常)
+  - Expert B → `Normal` (正常)
+  - Expert C → `Age-related Macular Degeneration` (年龄相关性黄斑变性)
 - Exported fields:
-  - `target`: `年龄相关性黄斑变性` (label_id=98)
-  - `partial_target`: {`正常` (94), `年龄相关性黄斑变性` (98), `其他疾病/异常` (101)}
+  - `target`: `Age-related Macular Degeneration` (label_id=98)
+  - `partial_target`: {`Normal` (94), `Age-related Macular Degeneration` (98), `Other Disease/Abnormality` (101)}
 
 ### dataset16 (dif-mritumor)
 
@@ -77,12 +77,12 @@ Example images (copied from maintainer local trace folders for illustration):
 - `image_name`: `gl-0045.jpg`
 
 - Experts (anonymized):
-  - Expert A → `垂体瘤` (Pituitary tumor)
-  - Expert B → `胶质瘤` (Glioma)
-  - Expert C → `无肿瘤` (No tumor)
+  - Expert A → `Pituitary tumor` (垂体瘤)
+  - Expert B → `Glioma` (胶质瘤)
+  - Expert C → `No tumor` (无肿瘤)
 - Exported fields:
-  - `target`: `无肿瘤` (label_id=105)
-  - `partial_target`: {`胶质瘤` (102), `垂体瘤` (104), `无肿瘤` (105)}
+  - `target`: `No tumor` (label_id=105)
+  - `partial_target`: {`Glioma` (102), `Pituitary tumor` (104), `No tumor` (105)}
 
 ## Upstream pipeline (how these datasets were produced)
 1) Difficult-sample pre-selection: `ml4img` (ResNet + K-fold + uncertainty/disagreement)
