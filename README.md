@@ -1,4 +1,4 @@
-# Imprecise-Label Learning Datasets (ILL) of medical imaging
+# Imprecise-Label Learning Datasets of medical imaging (ILLMed) 
 
 This repository publishes **multi-expert annotations** as standardized label tables (CSV/Parquet/Mat) in the *SEU PLL dataset format* for "difficult" samples in three public medical image datasets. The disagreements on many samples present unique challenges to medical image classification tasks.
 
